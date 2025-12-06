@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HRV 引導訓練</title>
+    <style>
+        /* --- CSS RESET & VARIABLES --- */
+        :root {
+            --primary: #10b981; /* Emerald 500 */
+            --primary-dark: #059669;
+            --secondary: #64748b; /* Slate 500 */
+            --bg: #f8fafc; /* Slate 50 */
+            --card-bg: #ffffff;
+            --text-main: #1e293b; /* Slate 800 */
+            --danger: #f43f5e;
+            --warning: #f59e0b;
+            --radius: 1.5rem;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Noto Sans TC", system-ui, sans-serif; }
+        
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        /* --- APP CONTAINER --- */
+        .app-shell {
+            width: 100%;
+            max-width: 450px;
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+            max-height: 850px;
+            position: relative;
+        }
+
+        /* --- HEADER --- */
+        .header {
+            background: #0f172a;
+            color: white;
+            padding: 1.5rem;
+            border-bottom-left-radius: 2rem;
+            border-bottom-right-radius: 2rem;
+            z-index: 10;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .header-top { display: flex; justify-content: space-between; align-items: center; }
+        .title { font-size: 1.2rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; }
+        .step-badge { font-size: 0.75rem; background: rgba(255,255,255,0.15); padding: 0.25rem 0.75rem; border-radius: 99px; }
+        
+        /* --- PAGES --- */
+        .content { flex: 1; position: relative; overflow: hidden; background: #fff; display: flex; flex-direction: column; }
+        .page {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            padding: 1.5rem;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(20px);
+            transition: all 0.4s ease;
+            overflow-y: auto;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+        }
+        .page.active { opacity: 1; pointer-events: all; transform: translateX(0); }
+
+        /* --- TYPOGRAPHY --- */
+        h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 0.5rem; color: #0f172a; }
+        p { font-size: 0.95rem; line-height: 1.6; color: var(--secondary); margin-bottom: 1.5rem; }
+
+        /* --- COMPONENTS --- */
+        .btn {
+            width: 100%; padding: 1rem; border: none; border-radius: 1rem;
+            font-size: 1rem; font-weight: 700; cursor: pointer; transition: 0.2s;
+            display: flex; justify-content: center; align-items: center; gap: 0.5rem;
+            text-decoration: none; 
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(16,185,129,0.3); }
+        .btn-dark { background: #0f172a; color: white; }
+        .btn-outline { background: white; border: 2px solid #e2e8f0; color: var(--secondary); }
+        
+        .btn-group {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding-top: 1rem;
+        }
+
+        /* --- PAGE 1: FACTORS --- */
+        .factor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-bottom: 1.5rem; }
+        .factor-btn {
+            background: white; border: 2px solid #e2e8f0; border-radius: 1rem; padding: 0.8rem;
+            display: flex; flex-direction: column; align-items: center; gap: 0.5rem; cursor: pointer;
+        }
+        .factor-btn.active { background: #ecfdf5; border-color: var(--primary); color: var(--primary-dark); }
+        .factor-btn svg { width: 24px; height: 24px; stroke: currentColor; }
+        .factor-label { font-size: 0.8rem; font-weight: 700; }
+
+        .ecg-box {
+            background: black; border-radius: 1rem; height: 120px;
+            display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;
+            position: relative; overflow: hidden;
+            flex-shrink: 0;
+        }
+        .ecg-line { fill: none; stroke: var(--primary); stroke-width: 2; stroke-dasharray: 1000; stroke-dashoffset: 1000; }
+        .measuring .ecg-line { animation: dash 2.5s linear infinite; }
+        @keyframes dash { to { stroke-dashoffset: 0; } }
+
+        /* --- PAGE 2: RIVER CHART --- */
+        .step-strip { display: flex; justify-content: space-between; margin-bottom: 2rem; position: relative; flex-shrink: 0; }
+        .step-strip::before { content: ''; position: absolute; top: 15px; left: 10px; right: 10px; height: 2px; background: #f1f5f9; z-index: 0; }
+        .step-item { z-index: 1; display: flex; flex-direction: column; align-items: center; background: white; padding: 0 5px; }
+        .step-icon { width: 32px; height: 32px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; font-size: 12px; color: #94a3b8; }
+        .step-text { font-size: 10px; color: #94a3b8; font-weight: 600; }
+
+        .chart-box {
+            background: #f8fafc; border-radius: 1rem; padding: 1rem; height: 200px;
+            position: relative; margin-bottom: 1.5rem; border: 1px solid #f1f5f9;
+            flex-shrink: 0;
+        }
+        .chart-label { position: absolute; top: 10px; left: 10px; font-size: 10px; color: #94a3b8; font-weight: bold; }
+        .zone-river {
+            position: absolute; top: 35%; bottom: 35%; left: 0; right: 0;
+            background: rgba(203, 213, 225, 0.3); border-top: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 10px;
+        }
+        .zone-text { font-size: 10px; color: #64748b; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; }
+        .zone-range { font-size: 10px; color: #64748b; font-weight: bold; font-family: monospace; }
+        .baseline-dash { position: absolute; top: 50%; width: 100%; border-top: 1px dashed #94a3b8; opacity: 0.5; }
+
+        .interpretation-box {
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1rem; margin-bottom: 1rem;
+            font-size: 0.85rem; color: #475569;
+        }
+        .interp-item { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start; }
+        .interp-item:last-child { margin-bottom: 0; }
+        .interp-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+        .green-dot { background: #10b981; }
+        .red-dot { background: #f43f5e; }
+
+        /* --- PAGE 3: DECISION FLOW & EXERCISE --- */
+        .decision-box {
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem; 
+            padding: 0.8rem; /* Reduced padding */
+            margin-bottom: 1rem; /* Reduced margin */
+        }
+        
+        .flow-status-row {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 0.8rem; padding-bottom: 0.8rem; border-bottom: 1px dashed #e2e8f0;
+        }
+        .status-pill {
+            padding: 4px 10px; border-radius: 99px; font-size: 0.8rem; font-weight: bold;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .status-pill.good { background: #ecfdf5; color: #064e3b; }
+        .status-pill.bad { background: #fff1f2; color: #881337; }
+
+        .restriction-list {
+            display: flex; flex-direction: column; gap: 0.5rem; /* Reduced gap */
+        }
+        .restrict-toggle {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #f8fafc; 
+            padding: 0.6rem 0.8rem; /* Reduced padding */
+            border-radius: 0.6rem;
+            cursor: pointer; border: 2px solid transparent; transition: all 0.2s;
+        }
+        .restrict-toggle:hover { background: #f1f5f9; }
+        .restrict-toggle.active { border-color: #f43f5e; background: #fff1f2; }
+        .restrict-label { font-size: 0.8rem; font-weight: 600; color: #475569; }
+        .toggle-check {
+            width: 18px; height: 18px; border: 2px solid #cbd5e1; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .restrict-toggle.active .toggle-check { background: #f43f5e; border-color: #f43f5e; }
+        .toggle-check::after {
+            content: '✓'; color: white; font-size: 10px; display: none;
+        }
+        .restrict-toggle.active .toggle-check::after { display: block; }
+
+        .plan-header-box { margin-bottom: 0.5rem; border-top: 1px solid #e2e8f0; padding-top: 1rem; }
+        .plan-title { font-size: 1rem; font-weight: 700; color: #0f172a; margin-bottom: 0.2rem; }
+        .plan-subtitle { font-size: 0.8rem; color: #64748b; line-height: 1.4; margin-bottom: 0.5rem; }
+        
+        .day-card {
+            border-left: 4px solid #cbd5e1; background: #f8fafc; padding: 8px 12px; margin-bottom: 8px; border-radius: 0 10px 10px 0;
+            display: none; /* Hidden by default */
+        }
+        .day-card.rest { border-left-color: #94a3b8; background: #f1f5f9; } /* Gray for rest */
+        .day-card.high { border-left-color: #f43f5e; background: #fff1f2; }
+        .day-card.mid-high { border-left-color: #f97316; background: #fff7ed; }
+        .day-card.mid { border-left-color: #f59e0b; background: #fffbeb; }
+        .day-card.low { border-left-color: #10b981; background: #ecfdf5; }
+
+        .day-header { font-weight: 800; font-size: 0.9rem; display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .day-time { font-weight: 400; font-size: 0.75rem; color: #64748b; }
+        .day-detail { font-size: 0.8rem; color: #334155; line-height: 1.4; }
+        .day-purpose { font-size: 0.7rem; color: #64748b; margin-top: 4px; font-style: italic; }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="app-shell">
+    
+    <!-- HEADER -->
+    <header class="header">
+        <div class="header-top">
+            <div class="title">
+                <!-- Icon Activity -->
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                HRV 引導訓練
+            </div>
+            <div class="step-badge" id="step-display">Step 1 / 3</div>
+        </div>
+    </header>
+
+    <div class="content">
+
+        <!-- === PAGE 1: MEASUREMENT === -->
+        <div id="page-1" class="page active">
+            <h2>每日早晨檢測</h2>
+            <p style="margin-bottom: 1.5rem;"></p>
+            
+            <div style="background:#f8fafc; padding:1rem; border-radius:1rem; border:1px solid #e2e8f0; margin-bottom:1.5rem;">
+                <div style="font-size:0.75rem; font-weight:700; color:#94a3b8; margin-bottom:0.8rem; text-transform:uppercase;">
+                    今日狀態
+                </div>
+                <div class="factor-grid">
+                    <div class="factor-btn" onclick="toggleFactor('sleep', this)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                        <span class="factor-label">睡眠不足</span>
+                    </div>
+                    <div class="factor-btn" onclick="toggleFactor('stress', this)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                        <span class="factor-label">心理壓力</span>
+                    </div>
+                    <div class="factor-btn" onclick="toggleFactor('sick', this)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path></svg>
+                        <span class="factor-label">身體不適</span>
+                    </div>
+                    <div class="factor-btn" onclick="toggleFactor('travel', this)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        <span class="factor-label">時差</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ecg-box" id="ecg-container">
+                <svg width="100%" height="100%" viewBox="0 0 200 100" preserveAspectRatio="none">
+                    <path class="ecg-line" d="M0,50 L20,50 L25,30 L30,70 L35,10 L40,90 L45,50 L60,50 L65,30 L70,70 L75,10 L80,90 L85,50 L100,50 L105,30 L110,70 L115,10 L120,90 L125,50 L200,50" />
+                </svg>
+                <div id="measuring-text" class="hidden" style="position:absolute; bottom:10px; right:15px; color:#10b981; font-family:monospace; font-size:0.8rem;">RECORDING...</div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" id="measure-btn" onclick="runSimulation()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    開始模擬測量
+                </button>
+            </div>
+        </div>
+
+        <!-- === PAGE 2: NORMAL ZONE === -->
+        <div id="page-2" class="page">
+            <h2>尋找你的「正常範圍」</h2>
+            <p>HRV 不是越高越好，而是要跟「過去的自己」比較。</p>
+
+            <div class="step-strip">
+                <div class="step-item"><div class="step-icon">1</div><span class="step-text">每日測量</span></div>
+                <div class="step-item"><div class="step-icon">2</div><span class="step-text">累積數據</span></div>
+                <div class="step-item"><div class="step-icon">3</div><span class="step-text">計算平均</span></div>
+                <div class="step-item"><div class="step-icon">4</div><span class="step-text">建立常態區</span></div>
+            </div>
+
+            <div class="chart-box" id="chart-area">
+                <div class="chart-label">HRV 數值 (lnRMSSD)</div>
+                <div class="zone-river">
+                    <span class="zone-text">個人常態區</span>
+                    <span class="zone-range" id="zone-range-text"></span>
+                </div>
+                <div class="baseline-dash"></div>
+                <!-- Dynamic Dot will be inserted here via JS -->
+            </div>
+
+            <div class="interpretation-box">
+                <div class="interp-item">
+                    <div class="interp-dot green-dot"></div>
+                    <div>
+                        <strong>落於範圍內</strong><br>
+                        代表恢復良好，適合進行高強度訓練。
+                    </div>
+                </div>
+                <div class="interp-item">
+                    <div class="interp-dot red-dot"></div>
+                    <div>
+                        <strong>低於範圍</strong><br>
+                        代表恢復不足或交感神經主導。
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-dark" onclick="goStep(3)">
+                    查看今日訓練建議 <span style="margin-left:5px">→</span>
+                </button>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-outline" onclick="goStep(1)" style="flex:1;">上一頁</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- === PAGE 3: DECISION FLOW & EXERCISE === -->
+        <div id="page-3" class="page">
+            <!-- No Title as requested -->
+            <h2 style="margin-bottom:0.5rem;">訓練策略</h2>
+            
+            <!-- Interactive Decision Matrix -->
+            <div class="decision-box">
+                <div class="flow-status-row">
+                    <span style="font-size:0.85rem; font-weight:700; color:#334155;">今日 HRV 狀態</span>
+                    <div id="flow-hrv-status" class="status-pill good">
+                        <!-- JS injected -->
+                    </div>
+                </div>
+                
+                <div style="margin-bottom:0.5rem; font-size:0.75rem; font-weight:bold; color:#94a3b8; text-transform:uppercase;">安全限制條件 (Safety Restrictions)</div>
+                <div class="restriction-list">
+                    <div class="restrict-toggle" onclick="toggleRestrict('high2', this)">
+                        <span class="restrict-label">連續 2 天高強度訓練</span>
+                        <div class="toggle-check"></div>
+                    </div>
+                    <div class="restrict-toggle" onclick="toggleRestrict('rest2', this)">
+                        <span class="restrict-label">連續 2 天休息</span>
+                        <div class="toggle-check"></div>
+                    </div>
+                    <div class="restrict-toggle" onclick="toggleRestrict('train9', this)">
+                        <span class="restrict-label">連續訓練 9 天 (無休)</span>
+                        <div class="toggle-check"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="plan-header-box">
+                <div class="plan-title">建議訓練課表</div>
+                <div class="plan-subtitle">
+                    推薦運動 <br>
+                    <strong>方式可自由選擇：快走、慢跑、單車、游泳、橢圓機</strong>
+                </div>
+            </div>
+
+            <div style="overflow-y:auto; flex:1; padding-bottom:1rem;" id="recommendation-container">
+                
+                <!-- Mandatory Rest Message -->
+                <div id="day-rest" class="day-card rest">
+                    <div class="day-header" id="day-rest-title">
+                        休息日 (Rest)
+                    </div>
+                    <div class="day-detail"></div>
+                    <div class="day-purpose">目的：避免過度訓練，恢復身體機能</div>
+                </div>
+
+                <!-- Day 1 (Low) -->
+                <div id="day-1" class="day-card low">
+                    <div class="day-header">
+                        低強度長時間有氧
+                        <span class="day-time">45–50 min</span>
+                    </div>
+                    <div class="day-detail">強度：≤65%最大心率（輕鬆、呼吸自然）</div>
+                    <div class="day-purpose">目的：建立有氧基礎、增加脂肪代謝效率</div>
+                </div>
+
+                <!-- Day 2 (Steady) -->
+                <div id="day-2" class="day-card mid">
+                    <div class="day-header">
+                        中等強度穩定有氧
+                        <span class="day-time">40–45 min</span>
+                    </div>
+                    <div class="day-detail">強度：66–80%最大心率（穩定、能說話但不唱歌）</div>
+                    <div class="day-purpose">目的：提升耐力、累積有氧訓練量</div>
+                </div>
+
+                <!-- Day 3 (HIIT) -->
+                <div id="day-3" class="day-card high">
+                    <div class="day-header">
+                        高強度間歇訓練 (HIIT)
+                        <span class="day-time">30–35 min</span>
+                    </div>
+                    <div class="day-detail">
+                        • 熱身 8–10 min @ 65–70%<br>
+                        • 主訓練 5回合：<br>
+                        &nbsp;&nbsp;1 min @ 85–90%<br>
+                        &nbsp;&nbsp;2 min @ 65–70%<br>
+                        • 收操 5 min
+                    </div>
+                    <div class="day-purpose">目的：提升最大攝氧量 (VO₂max)、心輸出量與爆發性耐力</div>
+                </div>
+
+                <!-- Day 4 (Tempo) -->
+                <div id="day-4" class="day-card mid-high">
+                    <div class="day-header">
+                        中等偏高強度節奏
+                        <span class="day-time">35–40 min</span>
+                    </div>
+                    <div class="day-detail">強度：75–88%最大心率 (稍喘，只能短語交談)</div>
+                    <div class="day-purpose">目的：提高有氧能力上限與耐受力</div>
+                </div>
+
+            </div>
+
+            <div class="btn-group">
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-outline" onclick="goStep(2)" style="flex:1;">上一頁</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // --- STATE ---
+    const state = {
+        factors: { sleep: false, stress: false, sick: false, travel: false },
+        baseline: 75,
+        swc: 3,
+        todayVal: 0,
+        restrictions: { high2: false, rest2: false, train9: false }
+    };
+
+    // --- DOM HELPERS ---
+    const getEl = (id) => document.getElementById(id);
+    
+    // --- NAVIGATION ---
+    function goStep(n) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        getEl(`page-${n}`).classList.add('active');
+        getEl('step-display').innerText = `Step ${n} / 3`;
+
+        if (n === 2) renderChart();
+        if (n === 3) renderDecisionMatrix();
+    }
+
+    // --- FACTOR LOGIC (Page 1) ---
+    function toggleFactor(key, btn) {
+        state.factors[key] = !state.factors[key];
+        btn.classList.toggle('active');
+    }
+
+    // --- RESTRICTION LOGIC (Page 3) ---
+    function toggleRestrict(key, btn) {
+        state.restrictions[key] = !state.restrictions[key];
+        btn.classList.toggle('active');
+        renderDecisionMatrix(); // Re-render recommendation immediately
+    }
+
+    // --- SIMULATION ---
+    function runSimulation() {
+        const btn = getEl('measure-btn');
+        const box = getEl('ecg-container');
+        const txt = getEl('measuring-text');
+
+        // UI State: Measuring
+        btn.innerHTML = `<svg class="spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> 訊號分析中...`;
+        btn.disabled = true;
+        box.classList.add('measuring');
+        txt.classList.remove('hidden');
+
+        // Logic: Calculate HRV with penalties
+        let base = 76; 
+        if (state.factors.sleep) base -= 5;
+        if (state.factors.stress) base -= 4;
+        if (state.factors.sick) base -= 10;
+        if (state.factors.travel) base -= 3;
+        
+        // Random noise
+        const random = (Math.random() * 4) - 2;
+        state.todayVal = Math.round((base + random) * 10) / 10;
+
+        // Delay 2s
+        setTimeout(() => {
+            box.classList.remove('measuring');
+            txt.classList.add('hidden');
+            btn.innerHTML = `測量完成`;
+            
+            goStep(2);
+            
+            // Reset Button Text
+            setTimeout(() => {
+                btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> 開始模擬測量`;
+                btn.disabled = false;
+            }, 500);
+        }, 2000);
+    }
+
+    // --- PAGE 2: CHART RENDER ---
+    function renderChart() {
+        const container = getEl('chart-area');
+        const rangeText = `${state.baseline - state.swc} ~ ${state.baseline + state.swc}`;
+        getEl('zone-range-text').innerText = rangeText;
+
+        const oldDot = document.getElementById('result-dot');
+        if (oldDot) oldDot.remove();
+
+        const max = 90;
+        const min = 60;
+        let percent = 100 - ((state.todayVal - min) / (max - min) * 100);
+        if (percent < 10) percent = 10;
+        if (percent > 90) percent = 90;
+
+        let color = "#10b981"; // Green
+        const lowBound = state.baseline - state.swc;
+        if (state.todayVal < lowBound) color = "#f43f5e"; // Red
+        
+        const dot = document.createElement('div');
+        dot.id = 'result-dot';
+        dot.style.cssText = `
+            position: absolute; left: 50%; top: ${percent}%; transform: translate(-50%, -50%);
+            width: 20px; height: 20px; background: ${color}; border: 4px solid white;
+            border-radius: 50%; box-shadow: 0 4px 6px rgba(0,0,0,0.2); z-index: 10; display: flex; align-items: center;
+        `;
+        const label = document.createElement('div');
+        label.innerHTML = `<span style="font-weight:bold; color:#334155">你在這裡</span> <span style="font-size:10px; color:#64748b">(${state.todayVal})</span>`;
+        label.style.cssText = `position: absolute; left: 24px; white-space: nowrap; font-size: 12px;`;
+        dot.appendChild(label);
+        container.appendChild(dot);
+    }
+
+    // --- PAGE 3: DECISION MATRIX LOGIC ---
+    function renderDecisionMatrix() {
+        const lowBound = state.baseline - state.swc;
+        const isHrvLow = state.todayVal < lowBound; // True if HRV-
+
+        // 1. Update HRV Status Pill
+        const pill = getEl('flow-hrv-status');
+        if (isHrvLow) {
+            pill.className = 'status-pill bad';
+            pill.innerHTML = `<span style="width:8px;height:8px;background:#881337;border-radius:50%;"></span> HRV- (偏低)`;
+        } else {
+            pill.className = 'status-pill good';
+            pill.innerHTML = `<span style="width:8px;height:8px;background:#064e3b;border-radius:50%;"></span> HRV+ (良好)`;
+        }
+
+        // 2. Logic to Select Cards
+        const dayRest = getEl('day-rest');
+        const dayRestTitle = getEl('day-rest-title');
+        const day1 = getEl('day-1');
+        const day2 = getEl('day-2');
+        const day3 = getEl('day-3');
+        const day4 = getEl('day-4');
+
+        // Hide all first
+        [dayRest, day1, day2, day3, day4].forEach(d => d.style.display = 'none');
+
+        // --- CORE ALGORITHM ---
+        
+        // Priority 1: Mandatory Rest (9 days rule)
+        if (state.restrictions.train9) {
+            dayRestTitle.innerText = "強制休息日 (Mandatory Rest)";
+            dayRest.style.display = 'block';
+            return;
+        }
+
+        // Logic Decision Tree
+        if (!isHrvLow) {
+            // --- HRV+ (Good) ---
+            
+            if (state.restrictions.high2) {
+                // Rule: Consecutive 2 days of high intensity -> Low Intensity or Rest
+                day1.style.display = 'block'; // Low Intensity
+                dayRestTitle.innerText = "休息日 (Rest)";
+                dayRest.style.display = 'block'; // Rest (Added this)
+            } else {
+                // Rule: Not Consecutive 2 days high & Not 9 days continuous -> High Intensity or Moderate
+                day3.style.display = 'block'; // High
+                day4.style.display = 'block'; // Moderate/Tempo
+            }
+
+        } else {
+            // --- HRV- (Low) ---
+            
+            if (state.restrictions.rest2) {
+                 // Rule: Consecutive 2 days of rest -> Low intensity or easy run (Active Recovery)
+                 day1.style.display = 'block';
+            } else {
+                 // Rule: Not Consecutive 2 days of rest -> Low intensity or rest
+                 day1.style.display = 'block';
+                 dayRestTitle.innerText = "休息日 (Rest)";
+                 dayRest.style.display = 'block';
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
